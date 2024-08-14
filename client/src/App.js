@@ -3,7 +3,6 @@ import { Routes, Route, BrowserRouter } from 'react-router-dom';
 import SignUp from './Components/SignUp';
 import SignIn from './Components/SignIn';
 import LandPage from './Components/LandPage';
-import Admin from './Components/Admin';
 import ViewEmployee from './Components/ViewEmployee';
 import EditEmployee from './Components/EditEmployee';
 import CreateEmployee from './Components/CreateEmployee';
@@ -15,9 +14,7 @@ const App = () => {
       <Route path='/' element={<LandPage />} />
       <Route path='/sign-up' element={<SignUp />} />
       <Route path = '/sign-in' element={<SignIn/>}/>
-      <Route path = '/admin' element={<Admin/>}/>
       <Route path = '/add' element ={<CreateEmployee/>}/>
-      <Route path = '/edit' element = {<EditEmployee/>}/>
       <Route path = '/view' element = {<ViewEmployee/>}/>
       <Route path = '/edit/:id' element = {<EditEmployee/>}/>
     </Routes>

@@ -3,6 +3,7 @@ import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
 import { useNavigate } from 'react-router-dom';
 import { ClipLoader } from 'react-spinners';
 
+
 const SignIn = () => {
   const navigate = useNavigate();
   const auth = getAuth();
@@ -14,10 +15,14 @@ const SignIn = () => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if(localStorage.getItem("ems")){
+    if(localStorage.getItem("name") && localStorage.getItem("auth")){
       navigate("/view");
     }
   }, []);
+
+  // useEffect(()=>{
+  //   navigate('/view')
+  // }, [])
 
   const togglePasswordVisibility = () => {
     setPasswordVisible(!passwordVisible);
@@ -31,7 +36,10 @@ const SignIn = () => {
       if(!localStorage.getItem("name")){
         localStorage.setItem("name", name);
       }
-      navigate('/admin');
+      if(!localStorage.getItem("auth")){
+        localStorage.setItem("auth", true);
+      }
+      navigate('/view');
     } catch (error) {
       console.error('Login failed:', error.message);
       setError("Invalid email or password. Please try again.");

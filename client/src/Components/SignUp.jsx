@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState,useEffect } from 'react';
 import { firebaseAuth } from "../firebase";
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { useNavigate } from 'react-router-dom';
@@ -47,6 +47,12 @@ const SignUp = () => {
   const toggleConfirmPasswordVisibility = () => {
     setConfirmPasswordVisible(!confirmPasswordVisible);
   };
+
+  useEffect(() => {
+    if(localStorage.getItem("auth") && localStorage.getItem("name")){
+      navigate("/view")
+    }
+  }, [])
 
   return (
     <section className="bg-gray-50 min-h-screen flex items-center justify-center p-5">

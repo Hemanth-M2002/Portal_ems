@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Link } from 'react-router-dom';
+import { getAuth, signOut } from "firebase/auth";
+import { Link, useNavigate } from 'react-router-dom';
 
 // Basic UI Components
 const Button = ({ children, className, onClick, variant = "default", size = "md" }) => {
@@ -86,34 +87,39 @@ const Badge = ({ children }) => (
 );
 
 export default function ViewEmployee() {
+  const navigate = useNavigate();
   const [dataList, setDataList] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDesignation, setSelectedDesignation] = useState('');
   const [selectedCourses, setSelectedCourses] = useState([]);
-
-  const fetchData = () => {
-    axios.get("http://localhost:4000/view")
-      .then((resp) => {
-        setDataList(resp.data.data);
-      })
-      .catch((error) => {
-        console.log("Error fetching data:", error);
-      });
-  };
+  const auth = getAuth();
 
   useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await axios.get("http://localhost:4000/view");
+        setDataList(response.data.data);
+      } catch (error) {
+        console.log("Error fetching data:", error);
+      }
+    };
     fetchData();
   }, []);
 
-  const handleDelete = (id) => {
-    axios.delete(`http://localhost:4000/delete/${id}`)
-      .then(() => {
-        fetchData();
-        alert("Employee deleted Successfully :)");
-      })
-      .catch((error) => {
-        console.log("Error deleting employee:", error);
-      });
+  useEffect(() => {
+    if(!localStorage.getItem("name") && !localStorage.getItem("auth")){
+      navigate("/")
+    }
+  }, [])
+
+  const handleDelete = async (id) => {
+    try {
+      await axios.delete(`http://localhost:4000/delete/${id}`);
+      setDataList(prevData => prevData.filter(item => item._id !== id)); // Update state to remove deleted item
+      alert("Employee deleted Successfully :)");
+    } catch (error) {
+      console.log("Error deleting employee:", error);
+    }
   };
 
   const filteredData = dataList.filter(employee =>
@@ -124,20 +130,30 @@ export default function ViewEmployee() {
     (selectedCourses.length === 0 || selectedCourses.some(course => employee.courses?.includes(course)))
   );
 
+  const handleLogout = async () => {
+    try {
+      console.log('Attempting to sign out...');
+      await signOut(auth);
+      console.log('Sign-out successful.');
+      localStorage.removeItem("name");
+      localStorage.removeItem("auth");
+      navigate('/');
+    } catch (error) {
+      console.error("Error signing out: ", error);
+    }
+  };
+
   return (
     <div className="flex flex-col min-h-screen">
-      <header className="bg-gray-800 text-white py-4 px-6 flex items-center justify-between">
+      <header className="bg-gray-800 text-white py-4 px-6 flex items-center justify-between flex-wrap">
         <Link to="#" className="flex items-center gap-2">
-          <MountainIcon className="w-6 h-6" />
           <span className="text-lg font-bold">Employee Portal</span>
         </Link>
         <nav className="hidden md:flex gap-6">
-        {localStorage.getItem("name")?<h1>Welcome <b>{localStorage.getItem("name")}</b></h1>:""}
-          {/* <Link to="#" className="hover:underline">Employees</Link> */}
-          <Link to="/sign-in" className="hover:underline" onClick={() => localStorage.removeItem("name")}>Logout</Link>
+          {localStorage.getItem("name") && <h1>Welcome <b>{localStorage.getItem("name")}</b></h1>}
+          <button className="hover:underline" onClick={handleLogout}>Logout</button>
         </nav>
         <Button variant="ghost" size="icon" className="md:hidden">
-          <MenuIcon className="w-6 h-6" />
           <span className="sr-only">Toggle navigation</span>
         </Button>
       </header>
@@ -148,22 +164,22 @@ export default function ViewEmployee() {
               Add New Employee
             </Button>
           </Link>
-          <span>
-            <h2 className="text-3xl font-semibold text-gray-700 ml-[-845px]">Employee Lists</h2>
+          <span className="md:flex-1 md:text-center">
+            <h2 className="text-3xl font-semibold text-gray-700">Employee Lists</h2>
           </span>
         </div>
         
         <div className="flex flex-col md:flex-row justify-between items-end mb-8 space-y-4 md:space-y-0 gap-4">
-        <p className="text-lg font-medium text-gray-600w">Total Employees: {dataList.length}</p>
+          <p className="text-lg font-medium text-gray-600">Total Employees: {dataList.length}</p>
           <input
             type="text"
             placeholder="Search by Name, Email"
-            className="border border-gray-300 rounded-lg py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-800 px-14 lg:mr-[-800px]"
+            className="border border-gray-300 rounded-lg py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-800 w-full md:w-auto"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
           <select
-            className="border border-gray-300 rounded-lg py-2 px-4 text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-800"
+            className="border border-gray-300 rounded-lg py-2 px-4 text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-800 w-full md:w-auto"
             value={selectedDesignation}
             onChange={(e) => setSelectedDesignation(e.target.value)}
           >
@@ -173,103 +189,64 @@ export default function ViewEmployee() {
             <option value="Manager">Manager</option>
           </select>
         </div>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>S.No</TableHead>
-              <TableHead>Profile</TableHead>
-              <TableHead>Name</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Designation</TableHead>
-              <TableHead>Gender</TableHead>
-              <TableHead>Courses</TableHead>
-              <TableHead>Created</TableHead>
-              <TableHead>Updated</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredData.map((employee,index) => (
-              <TableRow key={employee._id}>
-                <TableCell>{index + 1}</TableCell>
-                <TableCell>
-                  <Avatar>
-                    <AvatarImage src={employee.image || '/placeholder-user.jpg'} alt={employee.name} />
-                    <AvatarFallback>{employee.name.charAt(0).toUpperCase()}</AvatarFallback>
-                  </Avatar>
-                </TableCell>
-                <TableCell>{employee.name || 'N/A'}</TableCell>
-                <TableCell>{employee.email || 'N/A'}</TableCell>
-                <TableCell>{employee.designation || 'N/A'}</TableCell>
-                <TableCell>{employee.gender || 'N/A'}</TableCell>
-                <TableCell>
-                  <div className="flex flex-wrap gap-2">
-                    {Array.isArray(employee.courses) ? employee.courses.map((course, index) => (
-                      <Badge key={index}>{course}</Badge>
-                    )) : 'No Courses'}
-                  </div>
-                </TableCell>
-                <TableCell>{new Date(employee.createdAt).toLocaleDateString()}</TableCell>
-                <TableCell>{new Date(employee.updatedAt).toLocaleDateString()}</TableCell>
-                <TableCell>
-                  <div className="flex gap-2">
-                    <Link to={`/edit/${employee._id}`}>
-                      <Button variant="outline" size="sm">Edit</Button>
-                    </Link>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => handleDelete(employee._id)}
-                    >
-                      Delete
-                    </Button>
-                  </div>
-                </TableCell>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>S.No</TableHead>
+                <TableHead>Profile</TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Designation</TableHead>
+                <TableHead>Gender</TableHead>
+                <TableHead>Courses</TableHead>
+                <TableHead>Created</TableHead>
+                <TableHead>Updated</TableHead>
+                <TableHead>Actions</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {filteredData.map((employee, index) => (
+                <TableRow key={employee._id}>
+                  <TableCell>{index + 1}</TableCell>
+                  <TableCell>
+                    <Avatar src={employee.image || '/placeholder-user.jpg'} alt={employee.name}>
+                      {!employee.image && employee.name.charAt(0).toUpperCase()}
+                    </Avatar>
+                  </TableCell>
+                  <TableCell>{employee.name || 'N/A'}</TableCell>
+                  <TableCell>{employee.email || 'N/A'}</TableCell>
+                  <TableCell>{employee.designation || 'N/A'}</TableCell>
+                  <TableCell>{employee.gender || 'N/A'}</TableCell>
+                  <TableCell>
+                    <div className="flex flex-wrap gap-2">
+                      {Array.isArray(employee.courses) ? employee.courses.map((course, index) => (
+                        <Badge key={index}>{course}</Badge>
+                      )) : 'No Courses'}
+                    </div>
+                  </TableCell>
+                  <TableCell>{new Date(employee.createdAt).toLocaleDateString()}</TableCell>
+                  <TableCell>{new Date(employee.updatedAt).toLocaleDateString()}</TableCell>
+                  <TableCell>
+                    <div className="flex gap-2">
+                      <Link to={`/edit/${employee._id}`}>
+                        <Button variant="outline" size="sm">Edit</Button>
+                      </Link>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleDelete(employee._id)}
+                      >
+                        Delete
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       </main>
     </div>
-  );
-}
-
-function MenuIcon(props) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <line x1="4" x2="20" y1="12" y2="12" />
-      <line x1="4" x2="20" y1="6" y2="6" />
-      <line x1="4" x2="20" y1="18" y2="18" />
-    </svg>
-  );
-}
-
-function MountainIcon(props) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="m8 3 4 8 5-5 5 15H2L8 3z" />
-    </svg>
   );
 }
