@@ -2,7 +2,7 @@
 
 ### git clone (`https://github.com/Hemanth-M2002/Portal_ems.git`)
 
-### cd client
+## cd client
 
 Navigate to the Client Directory
 
