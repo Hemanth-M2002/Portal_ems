@@ -15,7 +15,7 @@ Install Node Packages
 Start the client 
 
 
-### cd server
+## cd server
 
 Navigate to the Server Directory
 
